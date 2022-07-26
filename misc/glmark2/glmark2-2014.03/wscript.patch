@@ -1,0 +1,28 @@
+# Copyright 2017 NXP
+# Add support libpng16
+# Remove the x11 lib 
+# Sign off by: Duy Pham <duy.pham@nxp.com>
+--- glmark2-2014.03/wscript	2014-03-11 15:50:10.000000000 +0700
++++ glmark2-2014.03_new/wscript	2017-03-27 10:04:10.517610178 +0700
+@@ -94,7 +94,7 @@
+                       uselib = uselib, mandatory = True)
+ 
+     # Check for a supported version of libpng
+-    supp_png_pkgs = (('libpng12', '1.2'), ('libpng15', '1.5'),)
++    supp_png_pkgs = (('libpng12', '1.2'), ('libpng15', '1.5'), ('libpng16', '1.6'),)
+     have_png = False
+     for (pkg, atleast) in supp_png_pkgs:
+         try:
+@@ -120,8 +120,10 @@
+                 ('wayland-client','wayland-client', list_contains(Options.options.flavors, 'wayland')),
+                 ('wayland-egl','wayland-egl', list_contains(Options.options.flavors, 'wayland'))]
+     for (pkg, uselib, mandatory) in opt_pkgs:
+-        ctx.check_cfg(package = pkg, uselib_store = uselib,
+-                      args = '--cflags --libs', mandatory = mandatory)
++	if pkg == 'x11':
++		continue
++	ctx.check_cfg(package = pkg, uselib_store = uselib,
++		args = '--cflags --libs', mandatory = mandatory)
+ 
+     ctx.env.append_unique('CXXFLAGS', '-Werror -Wall -Wextra -Wnon-virtual-dtor'.split(' '))
+ 

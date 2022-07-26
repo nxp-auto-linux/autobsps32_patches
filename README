@@ -1,0 +1,6 @@
+This section contains patches for the BSP that are not planned for inclusion in
+the BSP, but might be useful for specific purposes (e.g. an example patch on
+how to reserve a memory block from the DTS).
+
+The directories' filenames should make it clear to which software versions do
+the patches apply, or on which versions they were initially implemented.

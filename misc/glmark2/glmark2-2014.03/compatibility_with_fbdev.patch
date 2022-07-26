@@ -1,0 +1,177 @@
+# Copyright 2017 NXP
+# Modify files native-state-x11.cpp and native-state-x11.h for compatibility with fbdev (#define EGL_API_FB)
+# Sign off by: Puneet Singh <puneetpal.singh@nxp.com>
+diff -Nur glmark2-2014.03/src/native-state-x11.cpp glmark2-2014.03_modified/src/native-state-x11.cpp
+--- glmark2-2014.03/src/native-state-x11.cpp	2014-03-11 15:50:10.000000000 +0700
++++ glmark2-2014.03_modified/src/native-state-x11.cpp	2017-03-22 09:55:19.546986732 +0700
+@@ -23,10 +23,13 @@
+ #include "native-state-x11.h"
+ #include "log.h"
+ 
++#ifdef EGL_API_FB
++#include "EGL/egl.h"
++#else
+ #include <X11/Xutil.h>
+ #include <X11/keysym.h>
+ #include <X11/Xatom.h>
+-
++#endif
+ /******************
+  * Public methods *
+  ******************/
+@@ -36,9 +39,13 @@
+     if (xdpy_)
+     {
+         if (xwin_)
++#ifdef EGL_API_FB
++           fbDestroyWindow(xwin_);
++           fbDestroyDisplay(xdpy_);
++#else
+             XDestroyWindow(xdpy_, xwin_);
+-
+-        XCloseDisplay(xdpy_);
++            XCloseDisplay(xdpy_);
++#endif
+     }
+ }
+ 
+@@ -46,8 +53,11 @@
+ NativeStateX11::init_display()
+ {
+     if (!xdpy_)
++#ifdef EGL_API_FB
++ 	xdpy_ = (NativeDisplayType) fbGetDisplay(NULL);
++#else
+         xdpy_ = XOpenDisplay(NULL);
+-
++#endif
+     return (xdpy_ != 0);
+ }
+ 
+@@ -60,10 +70,16 @@
+ bool
+ NativeStateX11::create_window(WindowProperties const& properties)
+ {
++#ifndef EGL_API_FB
+     static const char *win_name("glmark2 "GLMARK_VERSION);
++#endif
+ 
+     if (!xdpy_) {
++#ifdef EGL_API_FB        
++        Log::error("Error: FB Display has not been initialized!\n");
++#else       
+         Log::error("Error: X11 Display has not been initialized!\n");
++#endif     
+         return false;
+     }
+ 
+@@ -74,8 +90,13 @@
+              (properties_.width != properties.width ||
+               properties_.height != properties.height)))
+         {
++#ifdef EGL_API_FB
++	    fbDestroyWindow(xwin_);
++#else          
+             XDestroyWindow(xdpy_, xwin_);
++#endif
+             xwin_ = 0;
++
+         }
+         else
+         {
+@@ -89,17 +110,29 @@
+ 
+     if (properties_.fullscreen) {
+         /* Get the screen (root window) size */
++#ifdef EGL_API_FB
++        
++#else   
+         XWindowAttributes window_attr;
+         XGetWindowAttributes(xdpy_, RootWindow(xdpy_, DefaultScreen(xdpy_)), 
+                              &window_attr);
+         properties_.width = window_attr.width;
+         properties_.height = window_attr.height;
++#endif
+     }
+     else {
+         properties_.width = properties.width;
+         properties_.height = properties.height;
+     }
+ 
++#ifdef EGL_API_FB
++    xwin_ = (NativeWindowType) fbCreateWindow(xdpy_, 0, 0, properties_.width, properties_.height);
++     
++    if (!xwin_) {
++        Log::error("Error: fbCreateWindow() failed!\n");
++        return false;
++    }
++#else
+     XVisualInfo vis_tmpl;
+     XVisualInfo *vis_info = 0;
+     int num_visuals;
+@@ -169,7 +202,7 @@
+     /* Gracefully handle Window Delete event from window manager */
+     Atom wmDelete = XInternAtom(xdpy_, "WM_DELETE_WINDOW", True);
+     XSetWMProtocols(xdpy_, xwin_, &wmDelete, 1);
+-
++#endif
+     return true;
+ }
+ 
+@@ -184,12 +217,17 @@
+ NativeStateX11::visible(bool visible)
+ {
+     if (visible)
++#ifdef EGL_API_FB
++        Log::debug("Map window in FB\n");
++#else
+         XMapWindow(xdpy_, xwin_);
++#endif
+ }
+ 
+ bool
+ NativeStateX11::should_quit()
+ {
++#ifndef EGL_API_FB
+     XEvent event;
+ 
+     if (!XPending(xdpy_))
+@@ -205,6 +243,6 @@
+         /* Window Delete event from window manager */
+         return true;
+     }
+-
++#endif
+     return false;
+ }
+diff -Nur glmark2-2014.03/src/native-state-x11.h glmark2-2014.03_modified/src/native-state-x11.h
+--- glmark2-2014.03/src/native-state-x11.h	2014-03-11 15:50:10.000000000 +0700
++++ glmark2-2014.03_modified/src/native-state-x11.h	2017-03-22 09:55:19.606986734 +0700
+@@ -24,7 +24,11 @@
+ #define GLMARK2_NATIVE_STATE_X11_H_
+ 
+ #include "native-state.h"
++#ifdef EGL_API_FB
++#include "EGL/egl.h"
++#else
+ #include <X11/Xlib.h>
++#endif
+ 
+ class NativeStateX11 : public NativeState
+ {
+@@ -41,10 +45,15 @@
+     void flip() { }
+ 
+ private:
++#ifdef EGL_API_FB
++    NativeDisplayType xdpy_;
++    NativeWindowType xwin_;
++#else
+     /** The X display associated with this canvas. */
+     Display* xdpy_;
+     /** The X window associated with this canvas. */
+     Window xwin_;
++#endif
+     WindowProperties properties_;
+ };
+ 
